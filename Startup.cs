@@ -17,8 +17,7 @@ public class Startup
         try
         {
             JObject data = file.GetJSON(url);
-
-            ImportData.Execute(data);
+            new ImportData().Execute(data);
         }
         catch (Exception e)
         {
