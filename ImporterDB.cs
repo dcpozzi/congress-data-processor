@@ -4,60 +4,118 @@ using Npgsql;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Threading.Tasks;
+using DataProcessor.Models;
 
 public class ImportData
 {
     private static string ConnectionString = "Host=localhost;Username=congress_app;Password=database_senha;Database=congress_db";
-    private NpgsqlConnection conn = null;
     private HashSet<String> updatedDeputados = new HashSet<String>();
     private Dictionary<String, int> deputadosAPI = new Dictionary<string, int>();
     private int registerImported = 0;
-    public void Execute(JObject jsonData)
+    private readonly NpgsqlConnection conn;
+
+    public ImportData()
     {
-        //var jsonData = JObject.Parse(File.ReadAllText("./Ano-2023.json"));
-        Console.WriteLine("Starting...");
         conn = new NpgsqlConnection(ConnectionString);
         conn.Open();
+    }
+
+    public void Execute(FileMetadata metadata)
+    {
+        Console.WriteLine("Starting...");
         using (var transaction = conn.BeginTransaction())
         {
-            ClearDataBase();
-            ImportDeputados();
-            LoadDeputadosAPI();
+            try
+            {
+                ClearDataBase();
+                ImportDeputados();
+                LoadDeputadosAPI();
 
-            ProcessData(jsonData, transaction);
+                ProcessRegisters(metadata.Data);
+                StoreFileInfo(metadata);
+                transaction.Commit();
+            }
+            catch (Exception e)
+            {
+                transaction.Rollback();
+                Console.Error.WriteLine(e.ToString());
+            }
         }
 
         Console.WriteLine("Data imported successfully");
     }
 
-    private void ProcessData(JObject jsonData, NpgsqlTransaction transaction)
+    private void StoreFileInfo(FileMetadata metadata)
     {
-        int idDocumento = -1;
-        try
+        string fileInfoUpdateOrInsert = @"
+                        INSERT INTO data_files (file_name, content_length, etag, processing_datetime)
+                        VALUES (@fileName, @contentLength, @etag, @date)
+                        ON CONFLICT (file_name) DO UPDATE
+                        SET content_length = @contentLength,
+                            etag = @etag,
+                            processing_datetime = @date";
+        var categoriaCommand = new NpgsqlCommand(fileInfoUpdateOrInsert, conn);
+        categoriaCommand.Parameters.AddWithValue("fileName", metadata.Name);
+        categoriaCommand.Parameters.AddWithValue("contentLength", metadata.ContentLength);
+        categoriaCommand.Parameters.AddWithValue("etag", metadata.ETag);
+        categoriaCommand.Parameters.AddWithValue("date", DateTime.Now);
+        categoriaCommand.ExecuteNonQuery();
+    }
+
+    public bool ShouldProcessThisFile(FileMetadata newFileInfo)
+    {
+        FileMetadata? lastProcessedFile = GetLastProcessedFile(newFileInfo.Name);
+        if (lastProcessedFile == null)
         {
-            foreach (var item in jsonData["dados"])
+            return true;
+        }
+
+        return (newFileInfo.ETag != lastProcessedFile.ETag &&
+                newFileInfo.ContentLength > lastProcessedFile.ContentLength);
+    }
+
+    private FileMetadata? GetLastProcessedFile(string fileName)
+    {
+        string query = @"
+        SELECT content_length, etag FROM data_files
+        WHERE file_name = @fileName";
+
+        using (var queryCommand = new NpgsqlCommand(query, conn))
+        {
+            queryCommand.Parameters.AddWithValue("fileName", fileName);
+            var reader = queryCommand.ExecuteReader();
+            if (!reader.HasRows)
             {
-                idDocumento = ProcessItem(item);
+                reader.DisposeAsync();
+                return null;
             }
 
-            transaction.Commit();
-        }
-        catch (Exception e)
-        {
-            transaction.Rollback();
-            Console.Error.WriteLine($"Error importing data id ({idDocumento}): {e}");
+            reader.Read();
+            long contentLength = reader.GetInt64(0);
+            string etag = reader.GetString(1);
+            //DateTime dateFile = reader.GetDateTime(2);
+            reader.DisposeAsync();
+            FileMetadata fileInfo = new FileMetadata()
+            {
+                ContentLength = contentLength,
+                ETag = etag
+            };
+
+            return fileInfo;
         }
     }
 
-    private int ProcessItem(JToken item)
+    private void ProcessRegisters(JObject jsonData)
     {
-        int idDocumento = item["idDocumento"].ToObject<int>();
-        int? fornecedorId = ProcessFornecedor(item);
-        int? categoriaId = ProcessCategoria(item);
-        int idDeputado = ProcessDeputado(item);
-        ProcessGasto(idDocumento, item, fornecedorId, categoriaId, idDeputado);
-        UpdateStatistics();
-        return idDocumento;
+        foreach (var item in jsonData["dados"])
+        {
+            int idDocumento = item["idDocumento"].ToObject<int>();
+            int? fornecedorId = ProcessFornecedor(item);
+            int? categoriaId = ProcessCategoria(item);
+            int idDeputado = ProcessDeputado(item);
+            ProcessGasto(idDocumento, item, fornecedorId, categoriaId, idDeputado);
+            UpdateStatistics();
+        }
     }
 
     private void UpdateStatistics()

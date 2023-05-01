@@ -3,21 +3,29 @@
 //await ImportData.Main();
 
 using DataProcessor;
+using DataProcessor.Models;
 using DataProcessor.Processor;
 using Newtonsoft.Json.Linq;
 
 public class Startup
 {
+    private const string url = "https://www.camara.leg.br/cotas/Ano-2023.json.zip";
+
     public static void Init()
     {
-        string url = "https://www.camara.leg.br/cotas/Ano-2023.json.zip";
-        // FileGetter getter = new FileGetter();
-        // getter.GetMetadata(url, "Ano-2023.json.zip");
-        FilePreparer file = new FilePreparer();
+        FileManager fileManager = new FileManager(url);
+        FileMetadata metadata = fileManager.GetMetadata();
+        ImportData dataProc = new ImportData();
+        if (!dataProc.ShouldProcessThisFile(metadata))
+        {
+            Console.WriteLine("Database is up to date.");
+            return;
+        }
+
         try
         {
-            JObject data = file.GetJSON(url);
-            new ImportData().Execute(data);
+            FileMetadata file = fileManager.GetFile();
+            dataProc.Execute(file);
         }
         catch (Exception e)
         {
@@ -26,7 +34,8 @@ public class Startup
         finally
         {
             Console.WriteLine("Deleting files...");
-            file.CleanUpFiles();
+            Console.WriteLine("Database updated successfully.");
+            fileManager.CleanUpFiles();
         }
     }
 }
