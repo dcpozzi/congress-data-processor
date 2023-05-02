@@ -15,7 +15,7 @@ public class Startup
     {
         FileManager fileManager = new FileManager(url);
         FileMetadata metadata = fileManager.GetMetadata();
-        ImportData dataProc = new ImportData();
+        ExpensesFileProcessor dataProc = new ExpensesFileProcessor();
         if (!dataProc.ShouldProcessThisFile(metadata))
         {
             Console.WriteLine("Database is up to date.");

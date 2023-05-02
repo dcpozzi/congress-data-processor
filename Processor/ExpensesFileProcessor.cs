@@ -1,33 +1,28 @@
-using System;
-using System.Data;
 using Npgsql;
 using Newtonsoft.Json.Linq;
-using System.IO;
-using System.Threading.Tasks;
 using DataProcessor.Models;
 
-public class ImportData
+namespace DataProcessor.Processor;
+public class ExpensesFileProcessor : BaseFileProcessor
 {
     private static string ConnectionString = "Host=localhost;Username=congress_app;Password=database_senha;Database=congress_db";
     private HashSet<String> updatedDeputados = new HashSet<String>();
     private Dictionary<String, int> deputadosAPI = new Dictionary<string, int>();
     private int registerImported = 0;
-    private readonly NpgsqlConnection conn;
 
-    public ImportData()
+    public ExpensesFileProcessor() : base()
     {
-        conn = new NpgsqlConnection(ConnectionString);
-        conn.Open();
+
     }
 
     public void Execute(FileMetadata metadata)
     {
         Console.WriteLine("Starting...");
-        using (var transaction = conn.BeginTransaction())
+        using (var transaction = this.Connection.BeginTransaction())
         {
             try
             {
-                ClearDataBase();
+                ClearRegisters();
                 ImportDeputados();
                 LoadDeputadosAPI();
 
@@ -43,66 +38,6 @@ public class ImportData
         }
 
         Console.WriteLine("Data imported successfully");
-    }
-
-    private void StoreFileInfo(FileMetadata metadata)
-    {
-        string fileInfoUpdateOrInsert = @"
-                        INSERT INTO data_files (file_name, content_length, etag, processing_datetime)
-                        VALUES (@fileName, @contentLength, @etag, @date)
-                        ON CONFLICT (file_name) DO UPDATE
-                        SET content_length = @contentLength,
-                            etag = @etag,
-                            processing_datetime = @date";
-        var categoriaCommand = new NpgsqlCommand(fileInfoUpdateOrInsert, conn);
-        categoriaCommand.Parameters.AddWithValue("fileName", metadata.Name);
-        categoriaCommand.Parameters.AddWithValue("contentLength", metadata.ContentLength);
-        categoriaCommand.Parameters.AddWithValue("etag", metadata.ETag);
-        categoriaCommand.Parameters.AddWithValue("date", DateTime.Now);
-        categoriaCommand.ExecuteNonQuery();
-    }
-
-    public bool ShouldProcessThisFile(FileMetadata newFileInfo)
-    {
-        FileMetadata? lastProcessedFile = GetLastProcessedFile(newFileInfo.Name);
-        if (lastProcessedFile == null)
-        {
-            return true;
-        }
-
-        return (newFileInfo.ETag != lastProcessedFile.ETag &&
-                newFileInfo.ContentLength > lastProcessedFile.ContentLength);
-    }
-
-    private FileMetadata? GetLastProcessedFile(string fileName)
-    {
-        string query = @"
-        SELECT content_length, etag FROM data_files
-        WHERE file_name = @fileName";
-
-        using (var queryCommand = new NpgsqlCommand(query, conn))
-        {
-            queryCommand.Parameters.AddWithValue("fileName", fileName);
-            var reader = queryCommand.ExecuteReader();
-            if (!reader.HasRows)
-            {
-                reader.DisposeAsync();
-                return null;
-            }
-
-            reader.Read();
-            long contentLength = reader.GetInt64(0);
-            string etag = reader.GetString(1);
-            //DateTime dateFile = reader.GetDateTime(2);
-            reader.DisposeAsync();
-            FileMetadata fileInfo = new FileMetadata()
-            {
-                ContentLength = contentLength,
-                ETag = etag
-            };
-
-            return fileInfo;
-        }
     }
 
     private void ProcessRegisters(JObject jsonData)
@@ -132,7 +67,7 @@ public class ImportData
         string gastoQuery = @"
                             INSERT INTO gastos (id_documento, id_deputado, categoria_gasto_id, fornecedor_id, numero, data_emissao, valor_documento, valor_glosa, valor_liquido)
                             VALUES (@idDocumento, @idDeputado, @categoriaId, @fornecedorId, @numero, @dataEmissao, @valorDocumento, @valorGlosa, @valorLiquido)";
-        var gastoCommand = new NpgsqlCommand(gastoQuery, conn);
+        var gastoCommand = new NpgsqlCommand(gastoQuery, this.Connection);
         gastoCommand.Parameters.AddWithValue("idDocumento", idDocumento);
         gastoCommand.Parameters.AddWithValue("idDeputado", idDeputado);
         gastoCommand.Parameters.AddWithValue("categoriaId", (object)categoriaId ?? DBNull.Value);
@@ -183,7 +118,7 @@ public class ImportData
                         ON CONFLICT (descricao) DO UPDATE
                         SET descricao = excluded.descricao
                         RETURNING id";
-        var categoriaCommand = new NpgsqlCommand(categoriaQuery, conn);
+        var categoriaCommand = new NpgsqlCommand(categoriaQuery, this.Connection);
         categoriaCommand.Parameters.AddWithValue("descricao", item["descricao"].ToObject<string>());
         int? categoriaId = (int?)categoriaCommand.ExecuteScalar();
         return categoriaId;
@@ -197,7 +132,7 @@ public class ImportData
                             ON CONFLICT (cnpjCPF) DO UPDATE
                             SET nome = excluded.nome, cnpjCPF = excluded.cnpjCPF
                             RETURNING id";
-        var fornecedorCommand = new NpgsqlCommand(fornecedorQuery, conn);
+        var fornecedorCommand = new NpgsqlCommand(fornecedorQuery, this.Connection);
         fornecedorCommand.Parameters.AddWithValue("nome", item["fornecedor"].ToObject<string>());
         fornecedorCommand.Parameters.AddWithValue("cnpjCPF", item["cnpjCPF"].ToString().Trim());
         int? fornecedorId = (int?)fornecedorCommand.ExecuteScalar();
@@ -210,7 +145,7 @@ public class ImportData
             INSERT INTO deputados (nome, id_deputado_arq)
                 VALUES (@nome, @idDeputadoArq)
                 RETURNING id";
-        var updateCommand = new NpgsqlCommand(updateDeputado, conn);
+        var updateCommand = new NpgsqlCommand(updateDeputado, this.Connection);
         updateCommand.Parameters.AddWithValue("nome", nomeDeputado);
         updateCommand.Parameters.AddWithValue("idDeputadoArq", idDeputadoArq);
         int idDeputado = (int)updateCommand.ExecuteScalar();
@@ -223,7 +158,7 @@ public class ImportData
             update deputados
             set id_deputado_arq = @idDeputadoArq
             where id = @idDeputado";
-        var updateCommand = new NpgsqlCommand(updateDeputado, conn);
+        var updateCommand = new NpgsqlCommand(updateDeputado, this.Connection);
         updateCommand.Parameters.AddWithValue("idDeputadoArq", idDeputadoArq);
         updateCommand.Parameters.AddWithValue("idDeputado", idDeputado);
         int? linesAffected = (int?)updateCommand.ExecuteNonQuery();
@@ -247,7 +182,7 @@ public class ImportData
                         INSERT INTO deputados (id_deputado_api, nome)
                         VALUES (@idDeputadoAPI, @nome)";
 
-                using (var cmd = new NpgsqlCommand(query, conn))
+                using (var cmd = new NpgsqlCommand(query, this.Connection))
                 {
                     cmd.Parameters.AddWithValue("idDeputadoAPI", idDeputadoAPI);
                     cmd.Parameters.AddWithValue("nome", nome);
@@ -269,7 +204,7 @@ public class ImportData
         SELECT id, nome FROM deputados";
 
         deputadosAPI = new Dictionary<string, int>();
-        using (var queryCommand = new NpgsqlCommand(query, conn))
+        using (var queryCommand = new NpgsqlCommand(query, this.Connection))
         {
             using (var reader = queryCommand.ExecuteReader())
             {
@@ -283,17 +218,15 @@ public class ImportData
         }
     }
 
-    private void ClearDataBase()
+    private void ClearRegisters()
     {
         string clearQuery = @"
             delete from gastos;
             delete from categorias_gastos;
-            delete from fornecedores;
-            delete from deputados;";
+            delete from fornecedores;";
 
-        var clearCommand = new NpgsqlCommand(clearQuery, conn);
+        var clearCommand = new NpgsqlCommand(clearQuery, this.Connection);
         int? linesDeleted = (int?)clearCommand.ExecuteNonQuery();
-        Console.WriteLine($"Deputados excluídos: {linesDeleted}");
     }
 }
 
