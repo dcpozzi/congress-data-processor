@@ -9,13 +9,17 @@ using Newtonsoft.Json.Linq;
 
 public class Startup
 {
-    private const string url = "https://www.camara.leg.br/cotas/Ano-2023.json.zip";
-
     public static void Init()
     {
-        FileManager fileManager = new FileManager(url);
+        ProcessFileExpenses();
+        //ProcessFileProposicoes();
+    }
+
+    private static void ProcessFileExpenses()
+    {
+        DespesasFileProcessor dataProc = new DespesasFileProcessor();
+        FileManager fileManager = new FileManager(DespesasFileProcessor.FILE_URL);
         FileMetadata metadata = fileManager.GetMetadata();
-        ExpensesFileProcessor dataProc = new ExpensesFileProcessor();
         if (!dataProc.ShouldProcessThisFile(metadata))
         {
             Console.WriteLine("Database is up to date.");
@@ -37,6 +41,13 @@ public class Startup
             Console.WriteLine("Database updated successfully.");
             fileManager.CleanUpFiles();
         }
+    }
+
+    private static void ProcessFileProposicoes()
+    {
+        PorposicoesFileProcessor dataProc = new PorposicoesFileProcessor();
+        FileManager fileManager = new FileManager(PorposicoesFileProcessor.FILE_URL);
+        FileMetadata metadata = fileManager.GetMetadata();
     }
 }
 

@@ -8,12 +8,14 @@ public class FileManager
 {
     private string zipPath = "downloaded.zip";
     private string extractedPath = "extracted";
-    private string jsonFileName = string.Empty;
     private readonly string url;
+
+    private readonly string fileName;
 
     public FileManager(string url)
     {
         this.url = url;
+        fileName = ExtractFileName();
     }
 
     public FileMetadata GetMetadata()
@@ -45,13 +47,17 @@ public class FileManager
 
     public FileMetadata GetFile()
     {
-        FileMetadata fileInfo = SaveZipFromUrl();
-        ExtractingFileFromZip();
+        FileMetadata fileInfo = SaveFileFromUrl();
+        string jsonFileName = this.fileName;
+        if (fileName.ToLower().EndsWith(".zip"))
+        {
+            jsonFileName = ExtractingFileFromZip();
+        }
         fileInfo.Data = GetContentFile(jsonFileName);
         return fileInfo;
     }
 
-    private FileMetadata SaveZipFromUrl()
+    private FileMetadata SaveFileFromUrl()
     {
         FileMetadata metadata;
         using (var httpClient = new HttpClient())
@@ -60,7 +66,7 @@ public class FileManager
             {
                 response.EnsureSuccessStatusCode();
                 metadata = ExtractHeaders(response);
-                using (var fileStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write))
+                using (var fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write))
                 {
                     response.Content.CopyToAsync(fileStream);
                 }
@@ -69,21 +75,21 @@ public class FileManager
         return metadata;
     }
 
-    private void ExtractingFileFromZip()
+    private string ExtractingFileFromZip()
     {
-        ZipFile.ExtractToDirectory(zipPath, extractedPath);
+        ZipFile.ExtractToDirectory(fileName, extractedPath);
         string[] files = Directory.GetFiles(extractedPath);
         if (files.Length == 0)
         {
             throw new FileNotFoundException("Extracted file from zip not found");
         }
 
-        jsonFileName = files[0];
+        return files[0];
     }
 
     private JObject GetContentFile(string fileName)
     {
-        var jsonStream = File.ReadAllText(jsonFileName);
+        var jsonStream = File.ReadAllText(fileName);
 
         try
         {
@@ -97,7 +103,10 @@ public class FileManager
     }
     public void CleanUpFiles()
     {
-        File.Delete(zipPath);
-        Directory.Delete(extractedPath, true);
+        File.Delete(fileName);
+        if (Directory.Exists(extractedPath))
+        {
+            Directory.Delete(extractedPath, true);
+        }
     }
 }
