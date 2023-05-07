@@ -7,6 +7,8 @@ public class PorposicoesFileProcessor : BaseFileProcessor
     public const string FILE_URL = "https://dadosabertos.camara.leg.br/arquivos/proposicoesAutores/json/proposicoesAutores-2023.json";
     public void Execute(FileMetadata metadata)
     {
+        //using(trans
+
         //Clean up database
 
         //For each Proposicao
