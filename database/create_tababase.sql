@@ -1,8 +1,15 @@
-drop table gastos;
-drop table fornecedores;
-drop table deputados;
-drop table categorias_gastos;
+/*
+drop table categorias_gastos CASCADE;
+drop table gastos CASCADE;
+drop table fornecedores CASCADE;
+drop table deputados CASCADE;
+drop table proposicao CASCADE;
+drop table deputado_proposicao CASCADE;
 
+select id_deputado_api, count(*) from deputados group by id_deputado_api
+
+select * from deputados where id_deputado_api = 133439
+*/
 
 CREATE TABLE fornecedores(
     id SERIAL PRIMARY KEY,
@@ -22,7 +29,8 @@ CREATE TABLE deputados (
     id SERIAL PRIMARY KEY,
     id_deputado_api INTEGER,
     nome VARCHAR(255) NOT NULL,
-	id_deputado_arq INTEGER
+	id_deputado_arq INTEGER,
+    UNIQUE(id_deputado_api)
 );
 
 -- Tabela gasto
@@ -39,15 +47,23 @@ CREATE TABLE gastos (
     valor_liquido NUMERIC(10, 2)
 );
 
-CREATE TABLE IF NOT EXISTS data_files
+CREATE TABLE IF NOT EXISTS proposicoes
 (
     id SERIAL PRIMARY KEY,
-    file_name VARCHAR(255) NOT NULL,
-    content_length numeric(10,2),
-    etag characterVARCHAR(255) NOT NULL,
-    processing_datetime TIMESTAMP NOT NULL,
-    UNIQUE (file_name)
-)
+    id_proposicao INTEGER NOT NULL,
+    ementa VARCHAR(1000) NOT NULL,
+	UNIQUE(id_proposicao)
+);
+
+CREATE TABLE IF NOT EXISTS deputados_proposicoes
+(
+    id SERIAL PRIMARY KEY,
+    id_proposicao INTEGER NOT NULL,
+    id_deputado INTEGER NOT NULL,
+    proponente BOOLEAN NOT NULL,
+    FOREIGN KEY (id_proposicao) REFERENCES proposicoes(id_proposicao),
+    FOREIGN KEY (id_deputado) REFERENCES deputados(id_deputado_api)
+);
 
 CREATE VIEW deputado_gastos_agregados AS
 SELECT
@@ -60,3 +76,15 @@ FROM
     JOIN public.gastos g ON d.id = g.id_deputado
 GROUP BY
     d.id_deputado_api;
+
+
+
+CREATE TABLE IF NOT EXISTS data_files
+(
+    id SERIAL PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    content_length numeric(10,2),
+    etag characterVARCHAR(255) NOT NULL,
+    processing_datetime TIMESTAMP NOT NULL,
+    UNIQUE (file_name)
+);

@@ -4,10 +4,9 @@ using Npgsql;
 
 namespace DataProcessor.Processor;
 
-public class PorposicoesFileProcessor : BaseFileProcessor
+public class AutoresProposicoesProcessor : BaseFileProcessor
 {
-    public const string FILE_URL = "https://dadosabertos.camara.leg.br/arquivos/proposicoes/json/proposicoes-2023.json";
-    private const string URL_PROPOSICAO = "https://dadosabertos.camara.leg.br/api/v2/proposicoes/{0}/autores";
+    public const string FILE_URL = "https://dadosabertos.camara.leg.br/arquivos/proposicoesAutores/json/proposicoesAutores-2023.json";
     private int registerImported;
 
     public void Execute(FileMetadata metadata)
@@ -33,13 +32,38 @@ public class PorposicoesFileProcessor : BaseFileProcessor
     {
         foreach (var item in data["dados"])
         {
-            //Console.WriteLine(item);
-            int idProposicao = item["id"].ToObject<int>();
-            string ementa = item["ementa"].ToObject<string>();
-            string truncatedEmenta = ementa.Substring(0, Math.Min(ementa.Length, 1000));
-            StoreProposicao(idProposicao, truncatedEmenta);
+            int? idDeputado = ExtrairIdDeputadoFromUrl(item.Value<string>("uriAutor"));
+            if (idDeputado == null)
+            {
+                continue;
+            }
+
+            if (!DeputadoExists(idDeputado.Value))
+            {
+                continue;
+            }
+
+            int idProposicao = item.Value<int>("idProposicao");
+            if (!ProposicaoExists(idProposicao))
+            {
+                continue;
+            }
+
+            StoreAutoresFromProposicao(
+                idProposicao: idProposicao,
+                idDeputado: idDeputado.Value,
+                proponente: item.Value<int>("proponente") == 1 ? true : false);
             UpdateStatistics();
         }
+    }
+
+    private bool ProposicaoExists(int idProposicao)
+    {
+        string sql = "SELECT COUNT(*) FROM proposicoes WHERE id_proposicao = @id_proposicao";
+        using var cmd = new NpgsqlCommand(sql, Connection);
+        cmd.Parameters.AddWithValue("id_proposicao", idProposicao);
+        int count = Convert.ToInt32(cmd.ExecuteScalar());
+        return (count > 0);
     }
 
     private void UpdateStatistics()
@@ -48,33 +72,6 @@ public class PorposicoesFileProcessor : BaseFileProcessor
         if (registerImported % 100 == 0)
         {
             Console.WriteLine($"Registers: {registerImported}");
-        }
-    }
-
-    private void StoreProposicao(int idProposicao, string ementa)
-    {
-        string sql = "INSERT INTO proposicoes (id_proposicao, ementa) VALUES (@id_proposicao, @ementa)";
-        using var cmd = new NpgsqlCommand(sql, Connection);
-        cmd.Parameters.AddWithValue("id_proposicao", idProposicao);
-        cmd.Parameters.AddWithValue("ementa", ementa);
-        cmd.ExecuteNonQuery();
-    }
-    private void StoreAutoresFromProposicao(int idProposicao)
-    {
-        string urlProposicao = string.Format(URL_PROPOSICAO, idProposicao);
-        JObject data = JObject.Parse(GetJsonFromUrl(urlProposicao));
-        //Console.WriteLine(data);
-        foreach (var item in data["dados"])
-        {
-            //Console.WriteLine(item["uri"].ToObject<string>());
-            int idDeputado = ExtrairIdDeputadoFromUrl(item["uri"].ToObject<string>());
-            if (!DeputadoExists(idDeputado))
-            {
-                continue;
-            }
-
-            bool proponente = item["proponente"].ToObject<bool>();
-            StoreAutoresFromProposicao(idProposicao, idDeputado, proponente);
         }
     }
 
@@ -87,8 +84,12 @@ public class PorposicoesFileProcessor : BaseFileProcessor
         return (count > 0);
     }
 
-    private int ExtrairIdDeputadoFromUrl(string url)
+    private int? ExtrairIdDeputadoFromUrl(string url)
     {
+        if (!url.Contains("deputados"))
+        {
+            return null;
+        }
         string[] splittedUrl = url.Split('/');
         string idDeputado = splittedUrl[splittedUrl.Length - 1];
         return int.Parse(idDeputado);
@@ -119,19 +120,11 @@ public class PorposicoesFileProcessor : BaseFileProcessor
     private void ClearRegisters()
     {
         ClearDeputadoProposicao();
-        ClearProposicao();
     }
 
     private void ClearDeputadoProposicao()
     {
         string sql = "DELETE FROM deputados_proposicoes";
-        var cmd = new NpgsqlCommand(sql, Connection);
-        cmd.ExecuteNonQuery();
-    }
-
-    private void ClearProposicao()
-    {
-        string sql = "DELETE FROM proposicoes";
         var cmd = new NpgsqlCommand(sql, Connection);
         cmd.ExecuteNonQuery();
     }

@@ -223,7 +223,8 @@ public class DespesasFileProcessor : BaseFileProcessor
         string clearQuery = @"
             delete from gastos;
             delete from categorias_gastos;
-            delete from fornecedores;";
+            delete from fornecedores;
+            delete from deputados;";
 
         var clearCommand = new NpgsqlCommand(clearQuery, this.Connection);
         int? linesDeleted = (int?)clearCommand.ExecuteNonQuery();

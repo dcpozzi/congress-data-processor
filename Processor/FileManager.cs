@@ -68,7 +68,7 @@ public class FileManager
                 metadata = ExtractHeaders(response);
                 using (var fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write))
                 {
-                    response.Content.CopyToAsync(fileStream);
+                    response.Content.CopyToAsync(fileStream).GetAwaiter().GetResult();
                 }
             }
         }
