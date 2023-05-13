@@ -30,9 +30,9 @@ public class AutoresProposicoesProcessor : BaseFileProcessor
 
     private void ProcessRegisters(JObject data)
     {
-        foreach (var item in data["dados"])
+        foreach (var item in data["dados"]!)
         {
-            int? idDeputado = ExtrairIdDeputadoFromUrl(item.Value<string>("uriAutor"));
+            int? idDeputado = ExtrairIdDeputadoFromUrl(item.Value<string>("uriAutor")!);
             if (idDeputado == null)
             {
                 continue;

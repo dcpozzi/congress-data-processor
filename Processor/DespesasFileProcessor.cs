@@ -42,15 +42,33 @@ public class DespesasFileProcessor : BaseFileProcessor
 
     private void ProcessRegisters(JObject jsonData)
     {
-        foreach (var item in jsonData["dados"])
+        ValidateData(jsonData);
+        foreach (var item in jsonData["dados"]!)
         {
-            int idDocumento = item["idDocumento"].ToObject<int>();
-            int? fornecedorId = ProcessFornecedor(item);
-            int? categoriaId = ProcessCategoria(item);
-            int idDeputado = ProcessDeputado(item);
-            ProcessGasto(idDocumento, item, fornecedorId, categoriaId, idDeputado);
-            UpdateStatistics();
+            ValidateAndStoreGasto(item);
         }
+    }
+
+    private void ValidateData(JObject jsonData)
+    {
+        if (jsonData["dados"] == null)
+        {
+            throw new Exception("Invalid file");
+        }
+    }
+
+    private void ValidateAndStoreGasto(JToken item)
+    {
+        if (item["idDocumento"] == null || item["valorDocumento"] == null)
+        {
+            return;
+        }
+        int idDocumento = item["idDocumento"]!.ToObject<int>();
+        int? fornecedorId = ProcessFornecedor(item);
+        int? categoriaId = ProcessCategoria(item);
+        int idDeputado = ProcessDeputado(item);
+        ProcessGasto(idDocumento, item, fornecedorId, categoriaId, idDeputado);
+        UpdateStatistics();
     }
 
     private void UpdateStatistics()
@@ -70,20 +88,29 @@ public class DespesasFileProcessor : BaseFileProcessor
         var gastoCommand = new NpgsqlCommand(gastoQuery, this.Connection);
         gastoCommand.Parameters.AddWithValue("idDocumento", idDocumento);
         gastoCommand.Parameters.AddWithValue("idDeputado", idDeputado);
-        gastoCommand.Parameters.AddWithValue("categoriaId", (object)categoriaId ?? DBNull.Value);
-        gastoCommand.Parameters.AddWithValue("fornecedorId", (object)fornecedorId ?? DBNull.Value);
-        gastoCommand.Parameters.AddWithValue("numero", item["numero"].ToObject<string>());
-        gastoCommand.Parameters.AddWithValue("dataEmissao", item["dataEmissao"].ToString() == "" ? DBNull.Value : (object)item["dataEmissao"].ToObject<DateTime>());
-        gastoCommand.Parameters.AddWithValue("valorDocumento", item["valorDocumento"].ToObject<decimal>());
-        gastoCommand.Parameters.AddWithValue("valorGlosa", item["valorGlosa"].ToObject<decimal>());
-        gastoCommand.Parameters.AddWithValue("valorLiquido", item["valorLiquido"].ToObject<decimal>());
+        gastoCommand.Parameters.AddWithValue("categoriaId", ExtractIntValue(categoriaId));
+        gastoCommand.Parameters.AddWithValue("fornecedorId", ExtractIntValue(fornecedorId));
+        gastoCommand.Parameters.AddWithValue("numero", item["numero"]!.ToObject<string>()!);
+        gastoCommand.Parameters.AddWithValue("dataEmissao", item["dataEmissao"]!.ToString() == "" ? DBNull.Value : (object)item["dataEmissao"]!.ToObject<DateTime>());
+        gastoCommand.Parameters.AddWithValue("valorDocumento", item["valorDocumento"]!.ToObject<decimal>());
+        gastoCommand.Parameters.AddWithValue("valorGlosa", item["valorGlosa"]!.ToObject<decimal>());
+        gastoCommand.Parameters.AddWithValue("valorLiquido", item["valorLiquido"]!.ToObject<decimal>());
         gastoCommand.ExecuteNonQuery();
+    }
+
+    private static object ExtractIntValue(int? intValue)
+    {
+        if (intValue == null)
+        {
+            return DBNull.Value;
+        }
+        return (object)intValue;
     }
 
     private int ProcessDeputado(JToken item)
     {
-        int idDeputadoArq = item["numeroDeputadoID"].ToObject<int>();
-        String nomeDeputado = item["nomeParlamentar"].ToObject<String>();
+        int idDeputadoArq = item["numeroDeputadoID"]!.ToObject<int>();
+        String nomeDeputado = item["nomeParlamentar"]!.ToObject<String>()!;
         int idDeputado = 0;
 
         if (deputadosAPI.ContainsKey(nomeDeputado))
@@ -119,7 +146,7 @@ public class DespesasFileProcessor : BaseFileProcessor
                         SET descricao = excluded.descricao
                         RETURNING id";
         var categoriaCommand = new NpgsqlCommand(categoriaQuery, this.Connection);
-        categoriaCommand.Parameters.AddWithValue("descricao", item["descricao"].ToObject<string>());
+        categoriaCommand.Parameters.AddWithValue("descricao", item["descricao"]!.ToObject<string>()!);
         int? categoriaId = (int?)categoriaCommand.ExecuteScalar();
         return categoriaId;
     }
@@ -133,8 +160,8 @@ public class DespesasFileProcessor : BaseFileProcessor
                             SET nome = excluded.nome, cnpjCPF = excluded.cnpjCPF
                             RETURNING id";
         var fornecedorCommand = new NpgsqlCommand(fornecedorQuery, this.Connection);
-        fornecedorCommand.Parameters.AddWithValue("nome", item["fornecedor"].ToObject<string>());
-        fornecedorCommand.Parameters.AddWithValue("cnpjCPF", item["cnpjCPF"].ToString().Trim());
+        fornecedorCommand.Parameters.AddWithValue("nome", item["fornecedor"]!.ToObject<string>()!);
+        fornecedorCommand.Parameters.AddWithValue("cnpjCPF", item["cnpjCPF"]!.ToString().Trim());
         int? fornecedorId = (int?)fornecedorCommand.ExecuteScalar();
         return fornecedorId;
     }
@@ -148,8 +175,8 @@ public class DespesasFileProcessor : BaseFileProcessor
         var updateCommand = new NpgsqlCommand(updateDeputado, this.Connection);
         updateCommand.Parameters.AddWithValue("nome", nomeDeputado);
         updateCommand.Parameters.AddWithValue("idDeputadoArq", idDeputadoArq);
-        int idDeputado = (int)updateCommand.ExecuteScalar();
-        return idDeputado;
+        int? idDeputado = (int?)updateCommand.ExecuteScalar();
+        return idDeputado ?? 0;
     }
 
     private bool UpdateDeputados(int idDeputado, int idDeputadoArq)
@@ -168,7 +195,7 @@ public class DespesasFileProcessor : BaseFileProcessor
     private void ImportDeputados()
     {
         var jsonObject = JObject.Parse(File.ReadAllText("./deputados.json"));
-        var deputados = jsonObject["dados"].ToObject<JArray>();
+        var deputados = jsonObject["dados"]!.ToObject<JArray>()!;
 
 
         try
@@ -176,7 +203,7 @@ public class DespesasFileProcessor : BaseFileProcessor
             foreach (var deputado in deputados)
             {
                 int idDeputadoAPI = deputado.Value<int>("id");
-                string nome = deputado.Value<string>("nome");
+                string nome = deputado.Value<string>("nome")!;
 
                 string query = @"
                         INSERT INTO deputados (id_deputado_api, nome)
@@ -192,9 +219,8 @@ public class DespesasFileProcessor : BaseFileProcessor
             }
 
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            //Console.WriteLine("Error importing data: " + ex.Message);
             throw;
         }
     }

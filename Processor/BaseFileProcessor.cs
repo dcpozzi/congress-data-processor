@@ -32,7 +32,7 @@ public abstract class BaseFileProcessor
                             processing_datetime = @date";
         var categoriaCommand = new NpgsqlCommand(fileInfoUpdateOrInsert, conn);
         categoriaCommand.Parameters.AddWithValue("fileName", metadata.Name);
-        categoriaCommand.Parameters.AddWithValue("contentLength", metadata.ContentLength);
+        categoriaCommand.Parameters.AddWithValue("contentLength", metadata.ContentLength!);
         categoriaCommand.Parameters.AddWithValue("etag", metadata.ETag);
         categoriaCommand.Parameters.AddWithValue("date", DateTime.Now);
         categoriaCommand.ExecuteNonQuery();

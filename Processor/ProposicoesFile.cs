@@ -31,14 +31,33 @@ public class PorposicoesFileProcessor : BaseFileProcessor
 
     private void ProcessRegisters(JObject data)
     {
-        foreach (var item in data["dados"])
+        ValidateData(data);
+
+        foreach (var item in data["dados"]!)
         {
-            //Console.WriteLine(item);
-            int idProposicao = item["id"].ToObject<int>();
-            string ementa = item["ementa"].ToObject<string>();
-            string truncatedEmenta = ementa.Substring(0, Math.Min(ementa.Length, 1000));
-            StoreProposicao(idProposicao, truncatedEmenta);
-            UpdateStatistics();
+            ValidateAndStoreProposicao(item);
+        }
+    }
+
+    private void ValidateAndStoreProposicao(JToken item)
+    {
+        if (item["id"] == null || item["ementa"] == null)
+        {
+            return;
+        }
+
+        int idProposicao = item["id"]!.ToObject<int>();
+        string ementa = item["ementa"]!.ToObject<string>()!;
+        string truncatedEmenta = ementa.Substring(0, Math.Min(ementa.Length, 1000));
+        StoreProposicao(idProposicao, truncatedEmenta);
+        UpdateStatistics();
+    }
+
+    private static void ValidateData(JObject data)
+    {
+        if (data["dados"] == null)
+        {
+            throw new Exception("Invalid file");
         }
     }
 
@@ -59,63 +78,7 @@ public class PorposicoesFileProcessor : BaseFileProcessor
         cmd.Parameters.AddWithValue("ementa", ementa);
         cmd.ExecuteNonQuery();
     }
-    private void StoreAutoresFromProposicao(int idProposicao)
-    {
-        string urlProposicao = string.Format(URL_PROPOSICAO, idProposicao);
-        JObject data = JObject.Parse(GetJsonFromUrl(urlProposicao));
-        //Console.WriteLine(data);
-        foreach (var item in data["dados"])
-        {
-            //Console.WriteLine(item["uri"].ToObject<string>());
-            int idDeputado = ExtrairIdDeputadoFromUrl(item["uri"].ToObject<string>());
-            if (!DeputadoExists(idDeputado))
-            {
-                continue;
-            }
 
-            bool proponente = item["proponente"].ToObject<bool>();
-            StoreAutoresFromProposicao(idProposicao, idDeputado, proponente);
-        }
-    }
-
-    private bool DeputadoExists(int idDeputado)
-    {
-        string sql = "SELECT COUNT(*) FROM deputados WHERE id_deputado_api = @id_deputado";
-        using var cmd = new NpgsqlCommand(sql, Connection);
-        cmd.Parameters.AddWithValue("id_deputado", idDeputado);
-        int count = Convert.ToInt32(cmd.ExecuteScalar());
-        return (count > 0);
-    }
-
-    private int ExtrairIdDeputadoFromUrl(string url)
-    {
-        string[] splittedUrl = url.Split('/');
-        string idDeputado = splittedUrl[splittedUrl.Length - 1];
-        return int.Parse(idDeputado);
-    }
-
-    private void StoreAutoresFromProposicao(int idProposicao, int idDeputado, bool proponente)
-    {
-        string sql = "INSERT INTO deputados_proposicoes (id_deputado, id_proposicao, proponente) VALUES (@id_deputado, @id_proposicao, @proponente)";
-        using var cmd = new NpgsqlCommand(sql, Connection);
-        cmd.Parameters.AddWithValue("id_deputado", idDeputado);
-        cmd.Parameters.AddWithValue("id_proposicao", idProposicao);
-        cmd.Parameters.AddWithValue("proponente", proponente);
-        cmd.ExecuteNonQuery();
-    }
-
-    private string GetJsonFromUrl(string url)
-    {
-        using (HttpClient client = new HttpClient())
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("Accept", "application/json");
-            using var response = client.Send(request);
-            response.EnsureSuccessStatusCode();
-            string responseBody = response.Content.ReadAsStringAsync().Result;
-            return responseBody;
-        }
-    }
     private void ClearRegisters()
     {
         ClearDeputadoProposicao();
