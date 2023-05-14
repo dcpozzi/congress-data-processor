@@ -46,8 +46,8 @@ public class Startup
 
     private static void ProcessFileProposicoes()
     {
-        PorposicoesFileProcessor dataProc = new PorposicoesFileProcessor();
-        FileManager fileManager = new FileManager(PorposicoesFileProcessor.FILE_URL);
+        ProposicoesFileProcessor dataProc = new ProposicoesFileProcessor();
+        FileManager fileManager = new FileManager(ProposicoesFileProcessor.FILE_URL);
         FileMetadata metadata = fileManager.GetMetadata();
         if (!dataProc.ShouldProcessThisFile(metadata))
         {
