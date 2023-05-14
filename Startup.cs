@@ -1,7 +1,3 @@
-// See https://aka.ms/new-console-template for more information
-//await ImportData.ImportDeputados();
-//await ImportData.Main();
-
 using DataProcessor;
 using DataProcessor.Models;
 using DataProcessor.Processor;
@@ -12,8 +8,8 @@ public class Startup
     public static void Init()
     {
         ProcessFileExpenses();
-        //ProcessFileProposicoes();
-        //ProcessFileAutoresProposicoes();
+        ProcessFileProposicoes();
+        ProcessFileAutoresProposicoes();
     }
 
     private static void ProcessFileExpenses()

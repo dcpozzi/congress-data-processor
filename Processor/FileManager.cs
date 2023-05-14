@@ -6,7 +6,6 @@ namespace DataProcessor.Processor;
 
 public class FileManager
 {
-    private string zipPath = "downloaded.zip";
     private string extractedPath = "extracted";
     private FileMetadata metadata;
     private readonly string url;
