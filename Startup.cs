@@ -18,86 +18,20 @@ public class Startup
 
     private static void ProcessFileExpenses()
     {
-        DespesasFileProcessor dataProc = new DespesasFileProcessor();
-        FileManager fileManager = new FileManager(DespesasFileProcessor.FILE_URL);
-        FileMetadata metadata = fileManager.GetMetadata();
-        if (!dataProc.ShouldProcessThisFile(metadata))
-        {
-            Console.WriteLine("Expenses Database is up to date.");
-            return;
-        }
-
-        try
-        {
-            FileMetadata file = fileManager.GetFile();
-            dataProc.Execute(file);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.ToString());
-        }
-        finally
-        {
-            Console.WriteLine("Deleting files...");
-            Console.WriteLine("Database updated successfully.");
-            fileManager.CleanUpFiles();
-        }
+        GenericProcess process = new GenericProcess(new DespesasFileProcessor());
+        process.Execute();
     }
 
     private static void ProcessFileProposicoes()
     {
-        ProposicoesFileProcessor dataProc = new ProposicoesFileProcessor();
-        FileManager fileManager = new FileManager(ProposicoesFileProcessor.FILE_URL);
-        FileMetadata metadata = fileManager.GetMetadata();
-        if (!dataProc.ShouldProcessThisFile(metadata))
-        {
-            Console.WriteLine("Propositions Database is up to date.");
-            return;
-        }
-
-        try
-        {
-            FileMetadata file = fileManager.GetFile();
-            dataProc.Execute(file);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.ToString());
-        }
-        finally
-        {
-            Console.WriteLine("Deleting files...");
-            Console.WriteLine("Database updated successfully.");
-            fileManager.CleanUpFiles();
-        }
+        GenericProcess process = new GenericProcess(new ProposicoesFileProcessor());
+        process.Execute();
     }
 
     private static void ProcessFileAutoresProposicoes()
     {
-        AutoresProposicoesProcessor dataProc = new AutoresProposicoesProcessor();
-        FileManager fileManager = new FileManager(AutoresProposicoesProcessor.FILE_URL);
-        FileMetadata metadata = fileManager.GetMetadata();
-        if (!dataProc.ShouldProcessThisFile(metadata))
-        {
-            Console.WriteLine("Propositions Authors Database is up to date.");
-            return;
-        }
-
-        try
-        {
-            FileMetadata file = fileManager.GetFile();
-            dataProc.Execute(file);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.ToString());
-        }
-        finally
-        {
-            Console.WriteLine("Deleting files...");
-            Console.WriteLine("Database updated successfully.");
-            fileManager.CleanUpFiles();
-        }
+        GenericProcess process = new GenericProcess(new AutoresProposicoesProcessor());
+        process.Execute();
     }
 }
 

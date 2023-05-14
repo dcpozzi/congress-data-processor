@@ -21,6 +21,8 @@ public abstract class BaseFileProcessor
         }
     }
 
+    public abstract string FileUrl { get; }
+    public abstract void Execute(FileMetadata metadata);
     protected void StoreFileInfo(FileMetadata metadata)
     {
         string fileInfoUpdateOrInsert = @"

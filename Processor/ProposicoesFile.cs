@@ -10,7 +10,8 @@ public class ProposicoesFileProcessor : BaseFileProcessor
     private const string URL_PROPOSICAO = "https://dadosabertos.camara.leg.br/api/v2/proposicoes/{0}/autores";
     private int registerImported;
 
-    public void Execute(FileMetadata metadata)
+    public override string FileUrl => FILE_URL;
+    public override void Execute(FileMetadata metadata)
     {
         using (var transaction = this.Connection.BeginTransaction())
         {

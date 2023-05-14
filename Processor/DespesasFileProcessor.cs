@@ -15,7 +15,9 @@ public class DespesasFileProcessor : BaseFileProcessor
 
     }
 
-    public void Execute(FileMetadata metadata)
+    public override string FileUrl => FILE_URL;
+
+    public override void Execute(FileMetadata metadata)
     {
         Console.WriteLine("Starting...");
         using (var transaction = this.Connection.BeginTransaction())

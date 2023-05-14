@@ -8,8 +8,8 @@ public class AutoresProposicoesProcessor : BaseFileProcessor
 {
     public const string FILE_URL = "https://dadosabertos.camara.leg.br/arquivos/proposicoesAutores/json/proposicoesAutores-2023.json";
     private int registerImported;
-
-    public void Execute(FileMetadata metadata)
+    public override string FileUrl => FILE_URL;
+    public override void Execute(FileMetadata metadata)
     {
         using (var transaction = this.Connection.BeginTransaction())
         {
