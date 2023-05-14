@@ -5,7 +5,7 @@ using DataProcessor.Models;
 namespace DataProcessor.Processor;
 public class DespesasFileProcessor : BaseFileProcessor
 {
-    public const string FILE_URL = "https://www.camara.leg.br/cotas/Ano-2023.json.zip";
+    private const string FILE_URL = "https://www.camara.leg.br/cotas/Ano-2023.json.zip";
     private HashSet<String> updatedDeputados = new HashSet<String>();
     private Dictionary<String, int> deputadosAPI = new Dictionary<string, int>();
     private int registerImported = 0;

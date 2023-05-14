@@ -6,8 +6,7 @@ namespace DataProcessor.Processor;
 
 public class ProposicoesFileProcessor : BaseFileProcessor
 {
-    public const string FILE_URL = "https://dadosabertos.camara.leg.br/arquivos/proposicoes/json/proposicoes-2023.json";
-    private const string URL_PROPOSICAO = "https://dadosabertos.camara.leg.br/api/v2/proposicoes/{0}/autores";
+    private const string FILE_URL = "https://dadosabertos.camara.leg.br/arquivos/proposicoes/json/proposicoes-2023.json";
     private int registerImported;
 
     public override string FileUrl => FILE_URL;
