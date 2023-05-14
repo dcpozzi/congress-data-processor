@@ -8,6 +8,7 @@ public class FileManager
 {
     private string zipPath = "downloaded.zip";
     private string extractedPath = "extracted";
+    private FileMetadata metadata;
     private readonly string url;
 
     private readonly string fileName;
@@ -16,16 +17,13 @@ public class FileManager
     {
         this.url = url;
         fileName = ExtractFileName();
+        var response = NetworkAccess.GetHeader(url);
+        metadata = ExtractHeaders(response);
     }
 
     public FileMetadata GetMetadata()
     {
-        using var httpClient = new HttpClient();
-        using var request = new HttpRequestMessage(HttpMethod.Head, url);
-        using var response = httpClient.Send(request);
-        response.EnsureSuccessStatusCode();
 
-        FileMetadata metadata = ExtractHeaders(response);
         return metadata;
     }
 
@@ -59,19 +57,7 @@ public class FileManager
 
     private FileMetadata SaveFileFromUrl()
     {
-        FileMetadata metadata;
-        using (var httpClient = new HttpClient())
-        {
-            using (var response = httpClient.GetAsync(url).GetAwaiter().GetResult())
-            {
-                response.EnsureSuccessStatusCode();
-                metadata = ExtractHeaders(response);
-                using (var fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write))
-                {
-                    response.Content.CopyToAsync(fileStream).GetAwaiter().GetResult();
-                }
-            }
-        }
+        NetworkAccess.SaveFileFromUrl(url, fileName);
         return metadata;
     }
 

@@ -9,10 +9,11 @@ public class DespesasFileProcessor : BaseFileProcessor
     private HashSet<String> updatedDeputados = new HashSet<String>();
     private Dictionary<String, int> deputadosAPI = new Dictionary<string, int>();
     private int registerImported = 0;
+    private DeputadosLoader deputadosLoader;
 
     public DespesasFileProcessor() : base()
     {
-
+        this.deputadosLoader = new DeputadosLoader(this.Connection);
     }
 
     public override string FileUrl => FILE_URL;
@@ -25,8 +26,8 @@ public class DespesasFileProcessor : BaseFileProcessor
             try
             {
                 ClearRegisters();
-                ImportDeputados();
-                LoadDeputadosAPI();
+                //deputadosLoader.Import();
+                deputadosAPI = deputadosLoader.GetDeputados();
 
                 ProcessRegisters(metadata.Data);
                 StoreFileInfo(metadata);
@@ -121,7 +122,7 @@ public class DespesasFileProcessor : BaseFileProcessor
 
             if (!updatedDeputados.Contains(nomeDeputado))
             {
-                if (UpdateDeputados(idDeputado, idDeputadoArq))
+                if (deputadosLoader.UpdateDeputados(idDeputado, idDeputadoArq))
                 {
                     updatedDeputados.Add(nomeDeputado);
                     Console.WriteLine($"Deputado {nomeDeputado} atualizado na base.");
@@ -130,7 +131,7 @@ public class DespesasFileProcessor : BaseFileProcessor
         }
         else
         {
-            idDeputado = InsertDeputado(nomeDeputado, idDeputadoArq);
+            idDeputado = deputadosLoader.InsertDeputado(nomeDeputado, idDeputadoArq);
             deputadosAPI.Add(nomeDeputado, idDeputado);
             updatedDeputados.Add(nomeDeputado);
             Console.WriteLine($"Deputado {nomeDeputado} inserido na base.");
@@ -168,91 +169,12 @@ public class DespesasFileProcessor : BaseFileProcessor
         return fornecedorId;
     }
 
-    private int InsertDeputado(string nomeDeputado, int idDeputadoArq)
-    {
-        string updateDeputado = @"
-            INSERT INTO deputados (nome, id_deputado_arq)
-                VALUES (@nome, @idDeputadoArq)
-                RETURNING id";
-        var updateCommand = new NpgsqlCommand(updateDeputado, this.Connection);
-        updateCommand.Parameters.AddWithValue("nome", nomeDeputado);
-        updateCommand.Parameters.AddWithValue("idDeputadoArq", idDeputadoArq);
-        int? idDeputado = (int?)updateCommand.ExecuteScalar();
-        return idDeputado ?? 0;
-    }
-
-    private bool UpdateDeputados(int idDeputado, int idDeputadoArq)
-    {
-        string updateDeputado = @"
-            update deputados
-            set id_deputado_arq = @idDeputadoArq
-            where id = @idDeputado";
-        var updateCommand = new NpgsqlCommand(updateDeputado, this.Connection);
-        updateCommand.Parameters.AddWithValue("idDeputadoArq", idDeputadoArq);
-        updateCommand.Parameters.AddWithValue("idDeputado", idDeputado);
-        int? linesAffected = (int?)updateCommand.ExecuteNonQuery();
-        return (linesAffected > 0);
-    }
-
-    private void ImportDeputados()
-    {
-        var jsonObject = JObject.Parse(File.ReadAllText("./deputados.json"));
-        var deputados = jsonObject["dados"]!.ToObject<JArray>()!;
-
-
-        try
-        {
-            foreach (var deputado in deputados)
-            {
-                int idDeputadoAPI = deputado.Value<int>("id");
-                string nome = deputado.Value<string>("nome")!;
-
-                string query = @"
-                        INSERT INTO deputados (id_deputado_api, nome)
-                        VALUES (@idDeputadoAPI, @nome)";
-
-                using (var cmd = new NpgsqlCommand(query, this.Connection))
-                {
-                    cmd.Parameters.AddWithValue("idDeputadoAPI", idDeputadoAPI);
-                    cmd.Parameters.AddWithValue("nome", nome);
-
-                    cmd.ExecuteNonQuery();
-                }
-            }
-
-        }
-        catch (Exception)
-        {
-            throw;
-        }
-    }
-    private void LoadDeputadosAPI()
-    {
-        string query = @"
-        SELECT id, nome FROM deputados";
-
-        deputadosAPI = new Dictionary<string, int>();
-        using (var queryCommand = new NpgsqlCommand(query, this.Connection))
-        {
-            using (var reader = queryCommand.ExecuteReader())
-            {
-                while (reader.Read())
-                {
-                    int id = reader.GetInt32(0);
-                    string nome = reader.GetString(1);
-                    deputadosAPI[nome] = id;
-                }
-            }
-        }
-    }
-
     private void ClearRegisters()
     {
         string clearQuery = @"
             delete from gastos;
             delete from categorias_gastos;
-            delete from fornecedores;
-            delete from deputados;";
+            delete from fornecedores;";
 
         var clearCommand = new NpgsqlCommand(clearQuery, this.Connection);
         int? linesDeleted = (int?)clearCommand.ExecuteNonQuery();

@@ -11,9 +11,9 @@ public class Startup
 {
     public static void Init()
     {
-        //ProcessFileExpenses();
-        ProcessFileProposicoes();
-        ProcessFileAutoresProposicoes();
+        ProcessFileExpenses();
+        //ProcessFileProposicoes();
+        //ProcessFileAutoresProposicoes();
     }
 
     private static void ProcessFileExpenses()
