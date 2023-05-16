@@ -7,12 +7,12 @@ public class Startup
 {
     public static void Init()
     {
-        ProcessFileExpenses();
+        ProcessFileDespesas();
         ProcessFileProposicoes();
         ProcessFileAutoresProposicoes();
     }
 
-    private static void ProcessFileExpenses()
+    private static void ProcessFileDespesas()
     {
         GenericProcess process = new GenericProcess(new DespesasFileProcessor());
         process.Execute();
