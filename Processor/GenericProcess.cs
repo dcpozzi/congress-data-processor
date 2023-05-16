@@ -1,6 +1,6 @@
-using DataProcessor.Models;
+using CongressoDataProcessor.Models;
 
-namespace DataProcessor.Processor;
+namespace CongressoDataProcessor.Processor;
 
 public class GenericProcess
 {

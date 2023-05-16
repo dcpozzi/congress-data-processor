@@ -1,4 +1,4 @@
-namespace DataProcessor.Processor;
+namespace CongressoDataProcessor.Processor;
 
 public class NetworkAccess
 {

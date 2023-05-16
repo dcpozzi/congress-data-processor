@@ -1,8 +1,8 @@
 using System.IO.Compression;
-using DataProcessor.Models;
+using CongressoDataProcessor.Models;
 using Newtonsoft.Json.Linq;
 
-namespace DataProcessor.Processor;
+namespace CongressoDataProcessor.Processor;
 
 public class FileManager
 {

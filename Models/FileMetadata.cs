@@ -1,6 +1,6 @@
 using Newtonsoft.Json.Linq;
 
-namespace DataProcessor.Models;
+namespace CongressoDataProcessor.Models;
 
 public class FileMetadata
 {

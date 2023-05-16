@@ -1,8 +1,8 @@
-using DataProcessor.Models;
+using CongressoDataProcessor.Models;
 using Newtonsoft.Json.Linq;
 using Npgsql;
 
-namespace DataProcessor.Processor;
+namespace CongressoDataProcessor.Processor;
 
 public class AutoresProposicoesProcessor : BaseFileProcessor
 {

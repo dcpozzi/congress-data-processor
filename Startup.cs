@@ -1,6 +1,6 @@
-using DataProcessor;
-using DataProcessor.Models;
-using DataProcessor.Processor;
+using CongressoDataProcessor;
+using CongressoDataProcessor.Models;
+using CongressoDataProcessor.Processor;
 using Newtonsoft.Json.Linq;
 
 public class Startup

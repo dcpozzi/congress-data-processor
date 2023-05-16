@@ -1,7 +1,7 @@
-using DataProcessor.Models;
+using CongressoDataProcessor.Models;
 using Npgsql;
 
-namespace DataProcessor.Processor;
+namespace CongressoDataProcessor.Processor;
 public abstract class BaseFileProcessor
 {
     private static string ConnectionString = "Host=localhost;Username=congress_app;Password=database_senha;Database=congress_db";
