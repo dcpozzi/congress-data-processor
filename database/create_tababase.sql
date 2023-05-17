@@ -66,20 +66,22 @@ CREATE TABLE IF NOT EXISTS deputados_proposicoes
 );
 
 CREATE VIEW deputado_gastos_agregados AS
-SELECT
-    d.id_deputado_api AS deputado_id_api,
-    coalesce (SUM(g.valor_documento), 0) AS total_documentos,
-    coalesce (SUM(g.valor_glosa), 0) AS total_glosas,
-    coalesce (SUM(g.valor_liquido), 0) AS total_liquido,
-	coalesce (count(p.id_proposicao), 0) AS proposicoes
-FROM
-    public.deputados d
-    LEFT JOIN public.gastos g ON d.id = g.id_deputado
-	LEFT JOIN public.deputados_proposicoes p ON d.id = p.id_deputado
-where
-	d.id_deputado_api is not null
-GROUP BY
-    d.id_deputado_api;
+SELECT prop.id_deputado, total_documentos, 
+	total_glosas, total_liquido, total_proposicoes
+FROM 
+	(SELECT id_deputado,
+		COALESCE (SUM(valor_documento), 0) AS total_documentos,
+		COALESCE (SUM(valor_glosa), 0) AS total_glosas,
+		COALESCE (SUM(valor_liquido), 0) AS total_liquido
+	FROM gastos 
+	WHERE id_deputado IS NOT null
+	GROUP BY id_deputado) ga
+JOIN 
+	(SELECT id_deputado, COUNT(id) AS total_proposicoes
+	FROM deputados_proposicoes 
+	where id_deputado is not null
+	GROUP BY id_deputado) prop 	 
+ON prop.id_deputado = ga.id_deputado
 
 CREATE TABLE IF NOT EXISTS data_files
 (
