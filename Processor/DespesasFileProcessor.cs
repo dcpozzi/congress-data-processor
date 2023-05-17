@@ -27,7 +27,7 @@ public class DespesasFileProcessor : BaseFileProcessor
             {
                 ClearRegisters();
                 //deputadosLoader.Import();
-                deputadosAPI = deputadosLoader.GetDeputados();
+                deputadosAPI = deputadosLoader.GetDeputadosByNameAsKey();
 
                 ProcessRegisters(metadata.Data);
                 StoreFileInfo(metadata);

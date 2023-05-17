@@ -3,8 +3,8 @@ drop table categorias_gastos CASCADE;
 drop table gastos CASCADE;
 drop table fornecedores CASCADE;
 drop table deputados CASCADE;
-drop table proposicao CASCADE;
-drop table deputado_proposicao CASCADE;
+drop table proposicoes CASCADE;
+drop table deputados_proposicoes CASCADE;
 
 select id_deputado_api, count(*) from deputados group by id_deputado_api
 
@@ -62,22 +62,24 @@ CREATE TABLE IF NOT EXISTS deputados_proposicoes
     id_deputado INTEGER NOT NULL,
     proponente BOOLEAN NOT NULL,
     FOREIGN KEY (id_proposicao) REFERENCES proposicoes(id_proposicao),
-    FOREIGN KEY (id_deputado) REFERENCES deputados(id_deputado_api)
+    FOREIGN KEY (id_deputado) REFERENCES deputados(id)
 );
 
 CREATE VIEW deputado_gastos_agregados AS
 SELECT
     d.id_deputado_api AS deputado_id_api,
-    SUM(g.valor_documento) AS total_documentos,
-    SUM(g.valor_glosa) AS total_glosas,
-    SUM(g.valor_liquido) AS total_liquido
+    coalesce (SUM(g.valor_documento), 0) AS total_documentos,
+    coalesce (SUM(g.valor_glosa), 0) AS total_glosas,
+    coalesce (SUM(g.valor_liquido), 0) AS total_liquido,
+	coalesce (count(p.id_proposicao), 0) AS proposicoes
 FROM
     public.deputados d
-    JOIN public.gastos g ON d.id = g.id_deputado
+    LEFT JOIN public.gastos g ON d.id = g.id_deputado
+	LEFT JOIN public.deputados_proposicoes p ON d.id = p.id_deputado
+where
+	d.id_deputado_api is not null
 GROUP BY
     d.id_deputado_api;
-
-
 
 CREATE TABLE IF NOT EXISTS data_files
 (

@@ -9,6 +9,7 @@ public class AutoresProposicoesProcessor : BaseFileProcessor
     private const string FILE_URL = "https://dadosabertos.camara.leg.br/arquivos/proposicoesAutores/json/proposicoesAutores-2023.json";
     private int registerImported;
     public override string FileUrl => FILE_URL;
+    private Dictionary<int, int> deputadosAPI = new Dictionary<int, int>();
     public override void Execute(FileMetadata metadata)
     {
         using (var transaction = this.Connection.BeginTransaction())
@@ -16,6 +17,8 @@ public class AutoresProposicoesProcessor : BaseFileProcessor
             try
             {
                 ClearRegisters();
+                LoadDeputadosKeys();
+
                 ProcessRegisters(metadata.Data);
                 StoreFileInfo(metadata);
                 transaction.Commit();
@@ -26,6 +29,12 @@ public class AutoresProposicoesProcessor : BaseFileProcessor
                 Console.Error.WriteLine(e.ToString());
             }
         }
+    }
+
+    private void LoadDeputadosKeys()
+    {
+        DeputadosLoader deputadosLoader = new DeputadosLoader(this.Connection);
+        deputadosAPI = deputadosLoader.GetDeputadosByIdApiAsKey();
     }
 
     private void ProcessRegisters(JObject data)
@@ -48,10 +57,11 @@ public class AutoresProposicoesProcessor : BaseFileProcessor
             {
                 continue;
             }
+            int idDeputadoApi = deputadosAPI[idDeputado.Value];
 
             StoreAutoresFromProposicao(
                 idProposicao: idProposicao,
-                idDeputado: idDeputado.Value,
+                idDeputado: idDeputadoApi,
                 proponente: item.Value<int>("proponente") == 1 ? true : false);
             UpdateStatistics();
         }
@@ -77,11 +87,7 @@ public class AutoresProposicoesProcessor : BaseFileProcessor
 
     private bool DeputadoExists(int idDeputado)
     {
-        string sql = "SELECT COUNT(*) FROM deputados WHERE id_deputado_api = @id_deputado";
-        using var cmd = new NpgsqlCommand(sql, Connection);
-        cmd.Parameters.AddWithValue("id_deputado", idDeputado);
-        int count = Convert.ToInt32(cmd.ExecuteScalar());
-        return (count > 0);
+        return deputadosAPI.ContainsKey(idDeputado);
     }
 
     private int? ExtrairIdDeputadoFromUrl(string url)

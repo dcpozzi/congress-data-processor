@@ -63,7 +63,7 @@ public class DeputadosLoader
         }
     }
 
-    public Dictionary<string, int> GetDeputados()
+    public Dictionary<string, int> GetDeputadosByNameAsKey()
     {
         string query = @"
         SELECT id, nome FROM deputados";
@@ -78,6 +78,28 @@ public class DeputadosLoader
                     int id = reader.GetInt32(0);
                     string nome = reader.GetString(1);
                     deputadosAPI[nome] = id;
+                }
+            }
+        }
+        return deputadosAPI;
+    }
+
+    public Dictionary<int, int> GetDeputadosByIdApiAsKey()
+    {
+        string query = @"
+        SELECT id, id_deputado_api FROM deputados
+        where id_deputado_api is not null";
+
+        var deputadosAPI = new Dictionary<int, int>();
+        using (var queryCommand = new NpgsqlCommand(query, this.connection))
+        {
+            using (var reader = queryCommand.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    int id = reader.GetInt32(0);
+                    int idApi = reader.GetInt32(1);
+                    deputadosAPI[idApi] = id;
                 }
             }
         }
