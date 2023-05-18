@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS deputados_proposicoes
     FOREIGN KEY (id_deputado) REFERENCES deputados(id)
 );
 
-CREATE VIEW deputado_gastos_agregados AS
+CREATE VIEW deputados_estatisticas AS
 SELECT prop.id_deputado, total_documentos, 
 	total_glosas, total_liquido, total_proposicoes
 FROM 
