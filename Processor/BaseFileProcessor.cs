@@ -9,8 +9,19 @@ public abstract class BaseFileProcessor
 
     public BaseFileProcessor()
     {
-        conn = new NpgsqlConnection(ConnectionString);
+        var conns = GetConnectionString();
+        conn = new NpgsqlConnection(conns);
         conn.Open();
+    }
+
+    private string GetConnectionString()
+    {
+        string? connString = System.Environment.GetEnvironmentVariable("ConnectionStrings__CongressDBConn");
+        if (connString == null)
+        {
+            throw new Exception("Connection String is not defined on environment variable.");
+        }
+        return connString;
     }
 
     public NpgsqlConnection Connection
